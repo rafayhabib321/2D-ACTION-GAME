@@ -7,29 +7,28 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import javax.imageio.ImageIO;
 
 public class GamePanel extends JPanel implements ActionListener {
     private Timer timer;
     private Knight knight;
-    private ArrayList<SkeletonWarrior> enemies;
-    private ArrayList<SkeletonArcher> archers = new ArrayList<>();
-
+    private ArrayList<Enemy> enemies;
     private long lastSpawnTime = System.currentTimeMillis();
     private final int spawnInterval = 5000;
 
     private BufferedImage background;
+    private BufferedImage youDiedImage;
     private int cameraX = 0;
 
     private boolean enemySpawnedAfterScroll = false;
-
+    
     public GamePanel() {
         setPreferredSize(new Dimension(800, 600));
         setFocusable(true);
         requestFocusInWindow();
 
         knight = new Knight();
-        archers.add(new SkeletonArcher(900, 400, knight));
         enemies = new ArrayList<>();
 
         try {
@@ -38,8 +37,13 @@ public class GamePanel extends JPanel implements ActionListener {
             System.err.println("Failed to load background");
             e.printStackTrace();
         }
+        try {
+            youDiedImage = ImageIO.read(new File("assets/you_died.jpg"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-        spawnEnemy();
+        spawnEnemy(); // Initial enemy spawn
 
         addKeyListener(new InputHandler(knight));
         timer = new Timer(16, this); // ~60 FPS
@@ -53,28 +57,14 @@ public class GamePanel extends JPanel implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         knight.update();
 
-        for (SkeletonArcher archer : archers) {
-            archer.update();
-            if (knight.isInAttackHitFrame()) {
-                archer.checkHit(knight.getAttackBox());
-            }
-            for (Arrow arrow : archer.getArrows()) {
-                if (arrow.getBounds().intersects(knight.getBounds())) {
-                    knight.takeDamage(10);
-                }
-            }
-        }
-
+        // Camera tracking logic
         if (knight.getX() > 400) {
             int dx = knight.getX() - 400;
             cameraX += dx;
-            knight.setX(400); // Fix Knight at screen center
+            knight.setX(400);
 
-            for (SkeletonWarrior enemy : enemies) {
+            for (Enemy enemy : enemies) {
                 enemy.setX(enemy.getX() - dx);
-            }
-            for (SkeletonArcher archer : archers) {
-                archer.setX(archer.getX() - dx);
             }
         } else if (cameraX > 0 && knight.getX() < 400) {
             int dx = 400 - knight.getX();
@@ -84,22 +74,29 @@ public class GamePanel extends JPanel implements ActionListener {
                 cameraX = 0;
             }
             knight.setX(400);
-            for (SkeletonWarrior enemy : enemies) {
+
+            for (Enemy enemy : enemies) {
                 enemy.setX(enemy.getX() + dx);
-            }
-            for (SkeletonArcher archer : archers) {
-                archer.setX(archer.getX() + dx);
             }
         }
 
+        // Periodic enemy spawn
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastSpawnTime >= spawnInterval) {
+            spawnEnemy();
+            lastSpawnTime = currentTime;
+        }
+
+        // Special spawn when scrolled far
         if (cameraX > 800 && !enemySpawnedAfterScroll) {
             spawnEnemy();
             enemySpawnedAfterScroll = true;
         }
 
-        Iterator<SkeletonWarrior> iterator = enemies.iterator();
+        // Update enemies
+        Iterator<Enemy> iterator = enemies.iterator();
         while (iterator.hasNext()) {
-            SkeletonWarrior enemy = iterator.next();
+            Enemy enemy = iterator.next();
             enemy.update();
 
             if (knight.isInAttackHitFrame() && samuraiAttackHits(knight, enemy)) {
@@ -117,7 +114,9 @@ public class GamePanel extends JPanel implements ActionListener {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        Graphics2D g2d = (Graphics2D) g;
 
+        // Draw scrolling background
         if (background != null) {
             int bgWidth = background.getWidth();
             int panelWidth = getWidth();
@@ -126,32 +125,44 @@ public class GamePanel extends JPanel implements ActionListener {
             if (startX > 0) startX -= bgWidth;
 
             for (int x = startX; x < panelWidth; x += bgWidth) {
-                g.drawImage(background, x, 0, null);
+                g2d.drawImage(background, x, 0, null);
             }
         }
 
-        knight.draw(g);
-
-        for (SkeletonArcher archer : archers) {
-            archer.draw(g, cameraX);
+        // Show "YOU DIED" screen if knight is dead
+        if (knight.isDead()) {
+            g2d.drawImage(youDiedImage, 0, 0, 800, 600, null); // Fullscreen image
+            return;
         }
 
-        for (SkeletonWarrior enemy : enemies) {
-            enemy.draw(g);
+        // Draw knight and enemies
+        knight.draw(g2d);
+        for (Enemy enemy : enemies) {
+            enemy.draw(g2d);
         }
     }
+
 
     private void spawnEnemy() {
         int spawnX = 900;
         int spawnY = 400;
-        SkeletonWarrior enemy = new SkeletonWarrior(spawnX + cameraX, spawnY);
-        enemy.setSamurai(knight);
-        enemies.add(enemy);
+
+        if (Math.random() < 0.5) {
+            SkeletonWarrior warrior = new SkeletonWarrior(spawnX + cameraX, spawnY);
+            warrior.setSamurai(knight);
+            enemies.add(warrior);
+            System.out.println("Spawned SkeletonWarrior");
+        } else {
+            SkeletonSpear spear = new SkeletonSpear(spawnX + cameraX, spawnY);
+            spear.setSamurai(knight);
+            enemies.add(spear);
+            System.out.println("Spawned SkeletonSpear");
+        }
     }
 
-    private boolean samuraiAttackHits(Knight knight, SkeletonWarrior skeleton) {
+    private boolean samuraiAttackHits(Knight knight, Enemy enemy) {
         Rectangle attackBox = knight.getAttackBox();
-        Rectangle skeletonBox = new Rectangle(skeleton.getX(), skeleton.getY(), 64, 128);
+        Rectangle skeletonBox = new Rectangle(enemy.getX(), enemy.getY(), 64, 128);
         return attackBox.intersects(skeletonBox);
     }
 

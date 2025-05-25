@@ -6,11 +6,10 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 
-public class SkeletonWarrior {
+public class SkeletonWarrior implements Enemy {
     private BufferedImage[] idleFrames;
     private BufferedImage[] walkFrames;
     private BufferedImage[] attackFrames;
-    private BufferedImage defendFrame;
     private BufferedImage[] hurtFrames;
     private BufferedImage[] deathFrames;
 
@@ -37,7 +36,7 @@ public class SkeletonWarrior {
     private int speed = 3;
     private boolean facingLeft = true;
 
-    private enum State { IDLE, RUNNING, ATTACKING, DEFENDING, HURT, DEAD }
+    private enum State { IDLE, RUNNING, ATTACKING, HURT, DEAD }
     private State currentState = State.IDLE;
 
     private Knight knight;
@@ -59,13 +58,6 @@ public class SkeletonWarrior {
         attackFrames = loadSpriteSheet("assets/skeleton_warrior/skeleton_warrior_Attack.png", 5);
         hurtFrames = loadSpriteSheet("assets/skeleton_warrior/skeleton_warrior_Hurt.png", 2);
         deathFrames = loadSpriteSheet("assets/skeleton_warrior/skeleton_warrior_Death.png", 4);
-
-        try {
-            defendFrame = ImageIO.read(new File("assets/skeleton_warrior/skeleton_warrior_Defend.png"))
-                    .getSubimage(0, 0, frameWidth, frameHeight);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     private BufferedImage[] loadSpriteSheet(String path, int frameCount) {
@@ -88,14 +80,11 @@ public class SkeletonWarrior {
 
     public void update() {
         if (knight == null) return;
-
-        if (isDead && deathComplete && !visible) return; // stop processing forever
+        if (isDead && deathComplete && !visible) return;
 
         int samuraiX = knight.getX();
         int distance = Math.abs(samuraiX - x);
-        if (!isDead) {
-            facingLeft = samuraiX < x;
-        }
+        if (!isDead) facingLeft = samuraiX < x;
 
         if (isDead) {
             if (!deathComplete) {
@@ -111,7 +100,7 @@ public class SkeletonWarrior {
                 }
             } else {
                 if (System.currentTimeMillis() - deathEndTime >= 4000) {
-                    visible = false; // remove after 4 seconds
+                    visible = false;
                 }
             }
             return;
@@ -147,28 +136,13 @@ public class SkeletonWarrior {
         }
 
         if (!inCooldown) {
-            int samuraiY = knight.getY();
-
-            int verticalThreshold = 40;
-            int horizontalThreshold = 60;
-
-            boolean samuraiNearby = Math.abs(samuraiX - x) <= horizontalThreshold &&
-                    Math.abs(samuraiY - y) <= verticalThreshold;
-
-            if (knight.isAttacking() && samuraiNearby) {
-                startDefending();
-            } else if (distance > 15) {
+            if (distance > 15) {
                 startRunning();
                 moveTowards(samuraiX);
             } else {
                 if (currentState != State.ATTACKING && attackCount < 2) {
                     startAttacking();
                 }
-            }
-        } else {
-            if (currentState == State.DEFENDING && !knight.isAttacking()) {
-                currentState = State.IDLE;
-                frameIndex = 0;
             }
         }
 
@@ -183,8 +157,7 @@ public class SkeletonWarrior {
                 case ATTACKING -> {
                     if (frameIndex == attackFrames.length - 2) {
                         if (isAttackHittingSamurai(knight)) {
-                            knight.takeDamage(20); // <-- Make sure this returns void or boolean accordingly
-                            // Remove parry logic if Knight.takeDamage is void
+                            knight.takeDamage(20);
                         }
                     }
                     if (frameIndex >= attackFrames.length) {
@@ -197,7 +170,6 @@ public class SkeletonWarrior {
                         currentState = State.IDLE;
                     }
                 }
-                case DEFENDING -> frameIndex = 0;
                 default -> frameIndex = 0;
             }
         }
@@ -218,13 +190,6 @@ public class SkeletonWarrior {
     public void startAttacking() {
         if (currentState != State.ATTACKING && !inCooldown) {
             currentState = State.ATTACKING;
-            frameIndex = 0;
-        }
-    }
-
-    public void startDefending() {
-        if (currentState != State.DEFENDING) {
-            currentState = State.DEFENDING;
             frameIndex = 0;
         }
     }
@@ -258,7 +223,6 @@ public class SkeletonWarrior {
                 case IDLE -> currentFrame = idleFrames[frameIndex % idleFrames.length];
                 case RUNNING -> currentFrame = walkFrames[frameIndex % walkFrames.length];
                 case ATTACKING -> currentFrame = attackFrames[frameIndex % attackFrames.length];
-                case DEFENDING -> currentFrame = defendFrame;
                 default -> currentFrame = idleFrames[0];
             }
         }
@@ -302,9 +266,11 @@ public class SkeletonWarrior {
         g2d.dispose();
         return flipped;
     }
+
     public void setX(int x) {
-    	this.x = x;
-    	}
+        this.x = x;
+    }
+
     public int getX() { return x; }
     public int getY() { return y; }
 

@@ -14,7 +14,7 @@ public class Knight {
     private int yVelocity = 0;
     private final int gravity = 1;
     private boolean facingLeft = false;
-    private int health = 1000;
+    private int health = 100;
     private long lastDamageTime = 0;
     private final int damageCooldown = 500; // milliseconds
     private boolean isDead = false;
@@ -342,4 +342,5 @@ public class Knight {
     public boolean isDead() {
         return isDead;
     }
+    
 }
