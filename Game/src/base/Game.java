@@ -3,7 +3,7 @@ import javax.swing.JFrame;
 
 public class Game {
     public static void main(String[] args) {
-        JFrame frame = new JFrame("Samurai Action Game");
+        JFrame frame = new JFrame("Knight Action Game");
         GamePanel panel = new GamePanel();
 
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

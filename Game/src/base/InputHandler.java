@@ -2,29 +2,29 @@ package base;
 import java.awt.event.*;
 
 public class InputHandler extends KeyAdapter {
-    private Samurai samurai;
+    private Knight knight;
 
-    public InputHandler(Samurai samurai) {
-        this.samurai = samurai;
+    public InputHandler(Knight knight) {
+        this.knight = knight;
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
         switch (e.getKeyCode()) {
             case KeyEvent.VK_A:
-                samurai.moveLeft(true);
+                knight.moveLeft(true);
                 break;
             case KeyEvent.VK_D:
-                samurai.moveRight(true);
+                knight.moveRight(true);
                 break;
             case KeyEvent.VK_W:
-                samurai.jump();
+                knight.jump();
                 break;
             case KeyEvent.VK_Z:
-                samurai.attack();
+                knight.attack();
                 break;
             case KeyEvent.VK_X:
-                samurai.setDefending(true);
+                knight.setDefending(true);
                 break;
         }
     }
@@ -33,13 +33,13 @@ public class InputHandler extends KeyAdapter {
     public void keyReleased(KeyEvent e) {
         switch (e.getKeyCode()) {
             case KeyEvent.VK_A:
-                samurai.moveLeft(false);
+                knight.moveLeft(false);
                 break;
             case KeyEvent.VK_D:
-                samurai.moveRight(false);
+                knight.moveRight(false);
                 break;
             case KeyEvent.VK_X:
-                samurai.setDefending(false);
+                knight.setDefending(false);
                 break;
         }
     }
